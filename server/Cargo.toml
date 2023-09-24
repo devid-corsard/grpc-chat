@@ -1,0 +1,27 @@
+[package]
+name = "rpc-chat"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "chat-server"
+path = "src/main.rs"
+
+[dependencies]
+tonic = "0.10"
+prost = "0.12"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+async-stream = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.7"
+anyhow = "1.0.75"
+uuid = { version = "1.4", features = ["v4", "serde"] }
+
+[build-dependencies]
+tonic-build = "0.10"
