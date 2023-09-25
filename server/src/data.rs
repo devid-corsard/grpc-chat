@@ -1,14 +1,14 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::Credentials;
+use crate::server::Credentials;
 
 #[derive(Debug)]
 pub struct Database {
-    users: HashMap<String, User>,
-    sessions: HashMap<Token, uuid::Uuid>,
+    pub users: HashMap<String, User>,
+    pub sessions: HashMap<Token, uuid::Uuid>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Token(uuid::Uuid);
 
 impl ToString for Token {
@@ -17,23 +17,30 @@ impl ToString for Token {
     }
 }
 
-/* impl Hash for Token {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+impl TryFrom<String> for Token {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let uid: uuid::Uuid = uuid::Uuid::try_parse(&value).map_err(|e| {
+            format!(
+                "Failed to parse uuid from string: {}, couse of: {}",
+                value, e
+            )
+        })?;
+        Ok(Self(uid))
     }
-} */
+}
 
 #[derive(Debug)]
 pub struct User {
-    id: uuid::Uuid,
-    name: String,
-    password_hash: String,
+    pub id: uuid::Uuid,
+    pub name: String,
+    pub password_hash: String,
 }
 
 impl Database {
     /// Generate token for existing user or newly created user
     pub fn login_user(&mut self, user: Credentials) -> Result<Token, anyhow::Error> {
-        let user = self.users.entry(user.name).or_insert(User {
+        let user = self.users.entry(user.name.clone()).or_insert(User {
             name: user.name,
             password_hash: user.password,
             id: uuid::Uuid::new_v4(),
@@ -46,5 +53,9 @@ impl Database {
     pub fn logout_user(&mut self, t: &Token) -> Result<(), anyhow::Error> {
         self.sessions.remove(t);
         Ok(())
+    }
+    /// List all users
+    pub fn list_all_users(&self) -> Result<Vec<&User>, anyhow::Error> {
+        Ok(self.users.values().collect())
     }
 }

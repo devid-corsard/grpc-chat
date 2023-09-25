@@ -1,13 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
-use crate::{chat_server::Chat, LogoutRequest, LogoutResponse};
-use crate::{Database, LoginRequest, LoginResponse};
-use tonic::{transport::Server, Code, Request, Response, Status};
-
-#[derive(Debug)]
-pub struct MyChat {
-    db: Mutex<Database>,
-}
+use crate::chat::{chat_server::Chat, LogoutRequest, LogoutResponse};
+use crate::chat::{ChatUser, LoginRequest, LoginResponse, Users, Void};
+use crate::data::Database;
+use tonic::{Code, Request, Response, Status};
 
 #[derive(Debug)]
 pub struct Credentials {
@@ -24,6 +20,11 @@ impl Credentials {
     }
 }
 
+#[derive(Debug)]
+pub struct MyChat {
+    pub db: Mutex<Database>,
+}
+
 #[tonic::async_trait]
 impl Chat for MyChat {
     async fn login(
@@ -31,21 +32,46 @@ impl Chat for MyChat {
         request: Request<LoginRequest>,
     ) -> Result<Response<LoginResponse>, Status> {
         let creds = Credentials::parse(request.into_inner());
-        let mut db = self
-            .db
-            .lock()
-            .map_err(|_| Status::new(Code::Internal, "Ooops something goes wrong"))?;
-        let token = db
-            .login_user(creds)
-            .map_err(|_| Status::new(Code::Internal, "Ooops something goes wrong"))?;
+        let mut db = self.db.lock().map_err(internal)?;
+        let token = db.login_user(creds).map_err(internal)?;
         Ok(Response::new(LoginResponse {
             token: token.to_string(),
         }))
     }
+
     async fn logout(
         &self,
         request: Request<LogoutRequest>,
     ) -> Result<Response<LogoutResponse>, Status> {
+        let token = request.into_inner().token.try_into().map_err(external)?;
+        let mut db = self.db.lock().map_err(internal)?;
+        db.logout_user(&token).map_err(internal)?;
         Ok(Response::new(LogoutResponse::default()))
     }
+
+    async fn list_users(&self, _: Request<Void>) -> Result<Response<Users>, Status> {
+        let db = self.db.lock().map_err(internal)?;
+        let users = db.list_all_users().map_err(internal)?;
+        let users = users
+            .iter()
+            .map(|u| ChatUser {
+                name: u.name.clone(),
+            })
+            .collect();
+        Ok(Response::new(Users { users }))
+    }
+}
+
+fn internal<T>(_e: T) -> Status
+where
+    T: std::fmt::Debug + std::fmt::Display,
+{
+    Status::new(Code::Internal, "Ooops something goes wrong")
+}
+
+fn external<T>(e: T) -> Status
+where
+    T: std::fmt::Debug + std::fmt::Display + Into<String>,
+{
+    Status::new(Code::InvalidArgument, e)
 }

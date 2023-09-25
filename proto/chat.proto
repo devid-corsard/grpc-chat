@@ -5,23 +5,26 @@ package chat;
 // import "google/protobuf/timestamp.proto";
 
 service Chat {
-    rpc Login(LoginRequest) returns (LoginResponse) {}
-    rpc Logout(LogoutRequest) returns (LogoutResponse) {}
-    // rpc Dialogue(stream DialogueRequest) returns (stream DialogueResponse) {}
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {}
+  rpc ListUsers(Void) returns (Users) {}
+  // rpc Dialogue(stream DialogueRequest) returns (stream DialogueResponse) {}
 }
 
 message LoginRequest {
-    string password = 1;
-    string name     = 2;
+  string password = 1;
+  string name = 2;
 }
 
-message LoginResponse {
-    string token = 1;
-}
+message LoginResponse { string token = 1; }
 
-message LogoutRequest {
-    string token = 1;
-}
+message LogoutRequest { string token = 1; }
+
+message Void {}
+
+message ChatUser { string name = 1; }
+
+message Users { repeated ChatUser users = 1; }
 
 message LogoutResponse {}
 
