@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use crate::chat::{chat_server::Chat, LogoutRequest, LogoutResponse};
-use crate::chat::{ChatUser, LoginRequest, LoginResponse, Users, Void};
+use crate::chat::{ChatUser, LoginRequest, LoginResponse, MessageBody, MessageStatus, Users, Void};
 use crate::data::Database;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Request, Response, Status};
 
 #[derive(Debug)]
@@ -72,6 +74,50 @@ impl Chat for MyChat {
             })
             .collect();
         Ok(Response::new(Users { users }))
+    }
+
+    type SendMessageStream = ReceiverStream<Result<MessageStatus, Status>>;
+
+    async fn send_message(
+        &self,
+        _request: Request<MessageBody>,
+    ) -> Result<Response<Self::SendMessageStream>, Status> {
+        let (tx, rx) = mpsc::channel(4);
+        dbg!(_request);
+        let mut message_status = MessageStatus::default();
+
+        tokio::spawn(async move {
+            for _ in 0..3 {
+                if message_status.sended == false {
+                    message_status.sended = true;
+                    tx.send(Ok(message_status.clone()))
+                        .await
+                        .expect("Failed to send mess status");
+                    println!(" /// Message sended");
+                    continue;
+                }
+                if message_status.delivered == false {
+                    message_status.delivered = true;
+                    tx.send(Ok(message_status.clone()))
+                        .await
+                        .expect("Failed to send mess status");
+                    println!(" /// Message delivered");
+                    continue;
+                }
+                if message_status.readed == false {
+                    message_status.readed = true;
+                    tx.send(Ok(message_status.clone()))
+                        .await
+                        .expect("Failed to send mess status");
+                    println!(" /// Message readed");
+                    continue;
+                }
+            }
+
+            println!(" /// done sending");
+        });
+
+        Ok(Response::new(ReceiverStream::new(rx)))
     }
 }
 

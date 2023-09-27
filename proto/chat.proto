@@ -2,12 +2,13 @@ syntax = "proto3";
 
 package chat;
 
-// import "google/protobuf/timestamp.proto";
+import "google/protobuf/timestamp.proto";
 
 service Chat {
   rpc Login(LoginRequest) returns (LoginResponse) {}
   rpc Logout(LogoutRequest) returns (LogoutResponse) {}
   rpc ListUsers(Void) returns (Users) {}
+  rpc SendMessage(MessageBody) returns (stream MessageStatus) {}
   // rpc Dialogue(stream DialogueRequest) returns (stream DialogueResponse) {}
 }
 
@@ -31,6 +32,18 @@ message Users { repeated ChatUser users = 1; }
 
 message LogoutResponse {}
 
+message MessageBody {
+  string token = 1;
+  string body = 2;
+  string reciever_id = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message MessageStatus {
+  bool sended = 1;
+  bool delivered = 2;
+  bool readed = 3;
+}
 // message DialogueRequest {
 //     string message = 2;
 // }

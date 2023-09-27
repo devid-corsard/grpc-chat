@@ -38,6 +38,28 @@ pub struct Users {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct LogoutResponse {}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MessageBody {
+    #[prost(string, tag = "1")]
+    pub token: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub body: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub reciever_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "4")]
+    pub timestamp: ::core::option::Option<::prost_types::Timestamp>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MessageStatus {
+    #[prost(bool, tag = "1")]
+    pub sended: bool,
+    #[prost(bool, tag = "2")]
+    pub delivered: bool,
+    #[prost(bool, tag = "3")]
+    pub readed: bool,
+}
 /// Generated client implementations.
 pub mod chat_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -180,6 +202,28 @@ pub mod chat_client {
             req.extensions_mut().insert(GrpcMethod::new("chat.Chat", "ListUsers"));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn send_message(
+            &mut self,
+            request: impl tonic::IntoRequest<super::MessageBody>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::MessageStatus>>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/chat.Chat/SendMessage");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new("chat.Chat", "SendMessage"));
+            self.inner.server_streaming(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -201,6 +245,19 @@ pub mod chat_server {
             &self,
             request: tonic::Request<super::Void>,
         ) -> std::result::Result<tonic::Response<super::Users>, tonic::Status>;
+        /// Server streaming response type for the SendMessage method.
+        type SendMessageStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::MessageStatus, tonic::Status>,
+            >
+            + Send
+            + 'static;
+        async fn send_message(
+            &self,
+            request: tonic::Request<super::MessageBody>,
+        ) -> std::result::Result<
+            tonic::Response<Self::SendMessageStream>,
+            tonic::Status,
+        >;
     }
     #[derive(Debug)]
     pub struct ChatServer<T: Chat> {
@@ -409,6 +466,53 @@ pub mod chat_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/chat.Chat/SendMessage" => {
+                    #[allow(non_camel_case_types)]
+                    struct SendMessageSvc<T: Chat>(pub Arc<T>);
+                    impl<
+                        T: Chat,
+                    > tonic::server::ServerStreamingService<super::MessageBody>
+                    for SendMessageSvc<T> {
+                        type Response = super::MessageStatus;
+                        type ResponseStream = T::SendMessageStream;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::ResponseStream>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::MessageBody>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as Chat>::send_message(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SendMessageSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
