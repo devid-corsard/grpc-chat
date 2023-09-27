@@ -26,6 +26,8 @@ pub struct Void {}
 pub struct ChatUser {
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
+    #[prost(bool, tag = "2")]
+    pub logged_in: bool,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

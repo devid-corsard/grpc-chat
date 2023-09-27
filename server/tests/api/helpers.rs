@@ -1,12 +1,7 @@
-use std::{collections::HashMap, sync::Mutex};
-
-use rpc_chat::server::MyChat;
+use rpc_chat::service::MyChat;
 use tonic::transport::{Channel, Endpoint, Server, Uri};
 
-use rpc_chat::{
-    chat::{chat_client::ChatClient, chat_server::ChatServer},
-    data::Database,
-};
+use rpc_chat::chat::{chat_client::ChatClient, chat_server::ChatServer};
 
 pub struct TestApp {
     pub client: ChatClient<Channel>,
@@ -14,21 +9,13 @@ pub struct TestApp {
 
 pub async fn spawn_app() -> TestApp {
     let (client, server) = tokio::io::duplex(1024);
-
-    let chat = MyChat {
-        db: Mutex::new(Database {
-            users: HashMap::new(),
-            sessions: HashMap::new(),
-        }),
-    };
-
+    let chat = MyChat::default();
     tokio::spawn(async move {
         Server::builder()
             .add_service(ChatServer::new(chat))
             .serve_with_incoming(tokio_stream::iter(vec![Ok::<_, std::io::Error>(server)]))
             .await
     });
-
     // Move client to an option so we can _move_ the inner value
     // on the first attempt to connect. All other attempts will fail.
     let mut client = Some(client);

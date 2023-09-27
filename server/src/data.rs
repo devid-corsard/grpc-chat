@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash};
 
-use crate::server::Credentials;
+use crate::service::Credentials;
 
 #[derive(Debug)]
 pub struct Database {
@@ -30,11 +30,12 @@ impl TryFrom<String> for Token {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
     pub id: uuid::Uuid,
     pub name: String,
     pub password_hash: String,
+    pub logged_in: bool,
 }
 
 impl Database {
@@ -44,6 +45,7 @@ impl Database {
             name: user.name,
             password_hash: user.password,
             id: uuid::Uuid::new_v4(),
+            logged_in: true,
         });
         let token = Token(uuid::Uuid::new_v4());
         self.sessions.insert(token, user.id);
@@ -51,11 +53,22 @@ impl Database {
     }
     /// Delete user session
     pub fn logout_user(&mut self, t: &Token) -> Result<(), anyhow::Error> {
+        if let Some(user_id) = self.sessions.get(t) {
+            self.users
+                .values_mut()
+                .find(|u| u.id == *user_id)
+                .map(|u| u.logged_in = false);
+        };
         self.sessions.remove(t);
         Ok(())
     }
     /// List all users
-    pub fn list_all_users(&self) -> Result<Vec<&User>, anyhow::Error> {
-        Ok(self.users.values().collect())
+    pub fn list_all_users(&self) -> Result<Vec<User>, anyhow::Error> {
+        Ok(self
+            .users
+            .values()
+            // dirty job to imitate that we get values from db
+            .map(|u| (*u).clone())
+            .collect())
     }
 }

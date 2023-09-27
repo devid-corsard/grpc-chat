@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use crate::chat::{chat_server::Chat, LogoutRequest, LogoutResponse};
@@ -23,6 +24,17 @@ impl Credentials {
 #[derive(Debug)]
 pub struct MyChat {
     pub db: Mutex<Database>,
+}
+
+impl Default for MyChat {
+    fn default() -> Self {
+        Self {
+            db: Mutex::new(Database {
+                users: HashMap::new(),
+                sessions: HashMap::new(),
+            }),
+        }
+    }
 }
 
 #[tonic::async_trait]
@@ -53,9 +65,10 @@ impl Chat for MyChat {
         let db = self.db.lock().map_err(internal)?;
         let users = db.list_all_users().map_err(internal)?;
         let users = users
-            .iter()
+            .into_iter()
             .map(|u| ChatUser {
-                name: u.name.clone(),
+                name: u.name,
+                logged_in: u.logged_in,
             })
             .collect();
         Ok(Response::new(Users { users }))

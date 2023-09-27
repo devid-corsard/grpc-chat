@@ -22,7 +22,10 @@ message LogoutRequest { string token = 1; }
 
 message Void {}
 
-message ChatUser { string name = 1; }
+message ChatUser {
+  string name = 1;
+  bool logged_in = 2;
+}
 
 message Users { repeated ChatUser users = 1; }
 
